@@ -54,7 +54,10 @@ def ensure_config() -> dict[str, Any]:
     """Create/upgrade config.json with the library defaults and return it."""
     import ultima_scraper_api.helpers.main_helper as main_helper
 
+    from ultima_scraper import dynamic_rules
+
     main_helper.get_config(config_path())
+    dynamic_rules.fix_config_file(config_path())
     return read_json(config_path())
 
 

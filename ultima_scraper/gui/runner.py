@@ -102,11 +102,22 @@ class ScraperRunner(threading.Thread):
         apply_run_options(config, self.options)
 
         scraper = UltimaScraper(config.settings)
+        failed: list[str] = []
         try:
             for site_name in self.options.sites:
                 self.bridge.status(f"{site_name} : connexion et récupération…")
-                await scraper.start(config, site_name)
-            self.bridge.log("\n[Terminé] Session terminée.\n")
+                api = await scraper.start(config, site_name)
+                if not api.auths:
+                    failed.append(site_name)
+            if failed:
+                self.bridge.log(
+                    f"\n[Échec] Aucun compte {', '.join(failed)} n'a pu se connecter, "
+                    "rien n'a été téléchargé. Voir la raison ci-dessus ; en général il faut "
+                    "recopier les identifiants (onglet Comptes > Coller depuis cURL) "
+                    "depuis une session ouverte dans le navigateur.\n"
+                )
+            else:
+                self.bridge.log("\n[Terminé] Session terminée.\n")
         finally:
             for datascraper in scraper.datascraper_manager.datascrapers:
                 try:

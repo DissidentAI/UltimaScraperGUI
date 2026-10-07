@@ -18,6 +18,7 @@ from ultima_scraper_collection.managers.metadata_manager.metadata_manager import
 )
 from ultima_scraper_collection.managers.option_manager import OptionManager
 
+from ultima_scraper import dynamic_rules, library_fixes  # noqa: F401
 from ultima_scraper.managers.ui_manager import UiManager
 
 api_types = ultima_scraper_api.api_types
@@ -40,6 +41,8 @@ class UltimaScraper:
     ):
         archive_time = timeit.default_timer()
         if not api_:
+            # Outdated signing rules make OnlyFans reject every request
+            dynamic_rules.fix_config(config)
             api_ = ultima_scraper_api.select_api(site_name, config)
 
         datascraper = self.datascraper_manager.select_datascraper(
@@ -91,11 +94,7 @@ class UltimaScraper:
                 )
             else:
                 # account_setup crashes on unauthenticated accounts, report it instead
-                await self.ui_manager.display(
-                    f"Authentication failed for {api.site_name} profile "
-                    f"'{auth.get_auth_details().username}'. "
-                    "Check the cookie/x-bc/user-agent (or authorization) values."
-                )
+                await self.ui_manager.display(self.describe_auth_failure(api, auth))
             if not setup:
                 if webhooks:
                     await main_helper.process_webhooks(
@@ -154,6 +153,28 @@ class UltimaScraper:
                 api, "download_webhook", "succeeded", global_settings
             )
 
+    @staticmethod
+    def describe_auth_failure(api: api_types, auth: auth_types) -> str:
+        errors = getattr(auth.authenticator, "errors", [])
+        reason = errors[-1].message if errors else "no response"
+        message = (
+            f"Authentication failed for {api.site_name} profile "
+            f"'{auth.get_auth_details().username}': {reason}. "
+        )
+        if "refresh" in reason.lower():
+            message += (
+                "The request signing rules are rejected by OnlyFans: check "
+                "settings.dynamic_rules_link in config.json."
+            )
+        elif api.site_name == "OnlyFans":
+            message += (
+                "Copy fresh cookie, x-bc and user-agent values from the same browser "
+                "session (log out/in on the website invalidates them)."
+            )
+        else:
+            message += "Copy a fresh authorization token and user-agent."
+        return message
+
     async def process_profiles(
         self,
         api: api_types,
@@ -179,6 +200,10 @@ class UltimaScraper:
             authed = await api.login(json_auth)
             authed.session_manager.add_proxies(global_settings.proxies)
             datas = {"auth": authed.get_auth_details().export()}
+            # The library stores the login result in "active", which is also the
+            # user's on/off switch: a single failed login would silently disable
+            # the profile for every later run.
+            datas["auth"]["active"] = True
             if datas:
                 main_helper.export_json(datas, user_auth_filepath)
         return api

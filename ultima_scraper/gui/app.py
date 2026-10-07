@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 from typing import Any
 
+from ultima_scraper import dynamic_rules
 from ultima_scraper.gui import config_store as store
 from ultima_scraper.gui import paths
 from ultima_scraper.gui.bridge import BridgeStream, UiBridge, install_patches
@@ -365,7 +366,8 @@ class App(tk.Tk):
             if not messagebox.askyesno(
                 "UltimaScraper",
                 "Aucun compte actif avec des identifiants n'a été trouvé pour ce site.\n"
-                "Ouvrir l'onglet Comptes ?",
+                "Dans l'onglet Comptes, remplissez les identifiants puis cochez "
+                "« Actif » et cliquez sur Enregistrer.\n\nOuvrir l'onglet Comptes ?",
                 parent=self,
             ):
                 return
@@ -804,14 +806,25 @@ class App(tk.Tk):
         )
         self.proxies_text.grid(row=10, column=1, sticky="ew", pady=4)
 
+        rules_var = tk.StringVar(
+            value=dynamic_rules.resolve(global_settings.get("dynamic_rules_link"))
+        )
+        self.setting_vars["dynamic_rules_link"] = rules_var
+        add_row(
+            11,
+            "Règles de signature OnlyFans",
+            ttk.Entry(tab, textvariable=rules_var),
+            "URL du fichier dynamic rules",
+        )
+
         tab.columnconfigure(1, weight=1)
         ttk.Label(
             tab,
             text="Ces réglages s'appliquent à OnlyFans et Fansly. Pour les options avancées, éditez config.json.",
             style="Hint.TLabel",
-        ).grid(row=11, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        ).grid(row=12, column=0, columnspan=3, sticky="w", pady=(12, 4))
         buttons = ttk.Frame(tab)
-        buttons.grid(row=12, column=0, columnspan=3, sticky="w", pady=6)
+        buttons.grid(row=13, column=0, columnspan=3, sticky="w", pady=6)
         ttk.Button(
             buttons,
             text="Enregistrer",
@@ -869,6 +882,9 @@ class App(tk.Tk):
         global_settings = config.setdefault("settings", {})
         global_settings["max_threads"] = max_threads
         global_settings["min_drive_space"] = min_drive_space
+        global_settings["dynamic_rules_link"] = dynamic_rules.resolve(
+            str(values["dynamic_rules_link"])
+        )
         global_settings["proxies"] = [
             line.strip()
             for line in self.proxies_text.get("1.0", "end").splitlines()
