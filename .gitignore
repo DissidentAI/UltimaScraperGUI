@@ -150,3 +150,6 @@ __settings__
 __user_data__
 typings
 mp4decrypt
+.tools/
+selftest.log
+UltimaScraper.sh

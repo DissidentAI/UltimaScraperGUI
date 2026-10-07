@@ -2,6 +2,44 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/0xHoarder.svg?style=social&label=Follow%200xHoarder)](https://twitter.com/0xHoarder)
 # ![app-token](ultima_scraper/docs/assets/img/64255399-96a86700-cf21-11e9-8c62-87a483f33701.png)
+# Interface graphique (GUI) & installation en un clic
+
+## Windows — le plus simple (aucune installation de Python)
+1. Téléchargez **`UltimaScraper-x.y.z-Setup.exe`** depuis l'onglet *Releases* du dépôt
+   (ou l'artefact du workflow *Build Windows exe* dans l'onglet *Actions*).
+2. Double-cliquez : installation en quelques secondes, sans droits administrateur,
+   sans toucher au PATH. Un raccourci est créé sur le Bureau et dans le menu Démarrer.
+
+Variante sans installation : **`UltimaScraper-x.y.z-portable.exe`** (un seul fichier), ou
+**`UltimaScraper-x.y.z-portable.zip`** (démarrage plus rapide, données gardées dans le dossier).
+
+Les données (`__settings__`, `__user_data__`, téléchargements par défaut) sont stockées dans
+`%USERPROFILE%\UltimaScraper` pour la version installée, et à côté de l'exe pour la version
+portable `.zip`. La variable d'environnement `ULTIMA_DATA_DIR` permet de choisir un autre dossier.
+
+## Depuis les sources (Windows / Linux / macOS)
+- **Windows** : double-cliquez sur **`install.bat`**.
+- **Linux / macOS** : `sh install.sh`
+
+Le script télécharge [uv](https://github.com/astral-sh/uv), Python 3.11 et toutes les dépendances
+**dans le dossier du projet** (`.tools/`, `.venv/`) : rien à installer à la main, rien à ajouter au PATH.
+Il crée ensuite les raccourcis (`UltimaScraper.lnk` / `UltimaScraper.sh`) et lance l'application.
+
+Pour construire soi-même l'exe et l'installeur sous Windows : double-cliquez sur **`build_exe.bat`**
+(résultat dans `dist\` ; l'installeur nécessite [Inno Setup 6](https://jrsoftware.org/isdl.php)).
+Un tag `vX.Y.Z` poussé sur GitHub construit et publie automatiquement ces fichiers dans une Release.
+
+## Utilisation
+1. Onglet **Comptes** : créez/choisissez un profil, puis cliquez sur **« Coller depuis cURL »** après avoir
+   copié une requête du site (F12 > Réseau > clic droit > *Copier en tant que cURL*) : cookie, x-bc,
+   user-agent (OnlyFans) ou authorization (Fansly) sont remplis automatiquement. Cochez **Actif**, **Enregistrer**.
+2. Onglet **Paramètres** : dossier de téléchargement, qualité vidéo, format des noms, proxys…
+3. Onglet **Téléchargement** : choisissez sites, contenus et médias, puis **Démarrer**. La liste des créateurs
+   s'affiche dans une fenêtre de sélection (ou cochez « Tous mes abonnements »).
+
+L'ancienne version en ligne de commande reste disponible : `python start_us.py`.
+Diagnostic d'une installation : `UltimaScraper.exe --self-test` (écrit `selftest.log` dans le dossier des données).
+
 # 27th January 2023 Migration
     You can either start the script or create the __settings__ and __user_data__ folders manually.
     ~~~~~~~~

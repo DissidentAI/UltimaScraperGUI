@@ -1,0 +1,2 @@
+# Tools needed to build the Windows .exe (install requirements.txt with --no-deps first)
+pyinstaller==6.22.3

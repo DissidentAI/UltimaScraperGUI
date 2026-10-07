@@ -85,9 +85,17 @@ class UltimaScraper:
             if not auth.get_auth_details():
                 continue
             setup = False
-            setup, _subscriptions = await datascraper.account_setup(
-                auth, datascraper, site_settings, identifiers
-            )
+            if auth.is_authed():
+                setup, _subscriptions = await datascraper.account_setup(
+                    auth, datascraper, site_settings, identifiers
+                )
+            else:
+                # account_setup crashes on unauthenticated accounts, report it instead
+                await self.ui_manager.display(
+                    f"Authentication failed for {api.site_name} profile "
+                    f"'{auth.get_auth_details().username}'. "
+                    "Check the cookie/x-bc/user-agent (or authorization) values."
+                )
             if not setup:
                 if webhooks:
                     await main_helper.process_webhooks(

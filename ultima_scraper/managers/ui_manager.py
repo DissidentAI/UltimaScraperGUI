@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ultima_scraper.managers.dashboard_controller_api import DashboardControllerAPI
+if TYPE_CHECKING:
+    # Only needed for typing; importing it at runtime pulls in websockets,
+    # which is a dev-only dependency.
+    from ultima_scraper.managers.dashboard_controller_api import DashboardControllerAPI
 
 
 class UiManager:

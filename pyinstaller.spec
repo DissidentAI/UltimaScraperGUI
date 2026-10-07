@@ -1,87 +1,109 @@
+# -*- mode: python ; coding: utf-8 -*-
+# Builds the UltimaScraper GUI executable.
+#
+#   pyinstaller --noconfirm pyinstaller.spec                 -> dist/UltimaScraper/ (folder, fast start-up, used by the installer)
+#   ULTIMA_ONEFILE=1 pyinstaller --noconfirm pyinstaller.spec -> dist/UltimaScraper.exe (single portable file)
 import os
-import user_agent
-import subprocess
-from PyInstaller.utils.win32.versioninfo import VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
+import sys
+
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
+
+MAJOR, MINOR, PATCH = 8, 0, 0
+NAME = "UltimaScraper"
+ONEFILE = os.environ.get("ULTIMA_ONEFILE", "") not in ("", "0", "false")
+ICON = os.path.join("ultima_scraper", "docs", "assets", "img", "icon.ico")
+
+datas = [(ICON, os.path.join("ultima_scraper", "docs", "assets", "img"))]
+binaries = []
+hiddenimports = ["logging.config", "sqlite3"] + collect_submodules("ultima_scraper")
+
+# The scraper libraries load alembic migrations, user-agent data files and
+# dynamically imported modules at runtime: bundle them entirely, sources included.
+for package in (
+    "ultima_scraper_api",
+    "ultima_scraper_collection",
+    "ultima_scraper_renamer",
+    "user_agent",
+    "pywidevine",
+):
+    package_datas, package_binaries, package_hiddenimports = collect_all(package, include_py_files=True)
+    datas += package_datas
+    binaries += package_binaries
+    hiddenimports += package_hiddenimports
+
+# alembic.testing needs pytest and is never used.
+hiddenimports += collect_submodules("alembic", filter=lambda name: not name.startswith("alembic.testing"))
+datas += collect_data_files("alembic")
 
 a = Analysis(
-    ['start_ofd.py'],
+    ["ultima_scraper_gui.py"],
     pathex=[SPECPATH],
-    binaries=[('extras/OFLogin/geckodriver.exe', '.')], # https://github.com/mozilla/geckodriver/releases/tag/v0.27.0
-    datas=[
-        (os.path.join(os.path.dirname(user_agent.__file__), 'data', '*'), 'user_agent/data'),
-        ('database/databases', 'database/databases')
-    ],
-    hiddenimports=['logging.config'],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=None,
-    noarchive=False)
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=None)
-
-def git(*args):
-    args = ['git', '-C', SPECPATH] + list(args)
-    environ = dict(os.environ)
-    environ['LC_ALL'] = 'C.UTF-8'
-
-    return subprocess.run(
-        args=args,
-        stdout=subprocess.PIPE,
-        env=environ,
-        check=True,
-        encoding='utf-8',
-        errors='replace').stdout.strip()
-
-major = 8
-minor = 0
-patch = 0
-build = int(git('rev-list', 'HEAD', '--count'))
-commit = git('rev-parse', '--short', 'HEAD')
-branch = git('rev-parse', '--abbrev-ref', 'HEAD')
-
-version = VSVersionInfo(
-    ffi=FixedFileInfo(
-        filevers=(major, minor, patch, build),
-        prodvers=(major, minor, patch, 0),
-        mask=0x3f,
-        flags=0x0,
-        OS=0x40004,
-        fileType=0x1,
-        subtype=0x0,
-        date=(0, 0)
-    ),
-    kids=[
-        StringFileInfo([
-            StringTable(
-                '040904B0',
-                [
-                    StringStruct('FileDescription', 'Ultima Scraper'),
-                    StringStruct('FileVersion', '{}.{}.{}.{}'.format(major, minor, patch, build)),
-                    StringStruct('LegalCopyright', 'GPLv3'),
-                    StringStruct('ProductName', 'Ultima Scraper'),
-                    StringStruct('ProductVersion', '{}.{}.{}+{}@{}'.format(major, minor, patch, commit, branch))
-                ])
-            ]),
-            VarFileInfo([VarStruct('Translation', [1033, 1200])])
-    ]
+    # Declared by the libraries but never used at runtime.
+    excludes=["mypy", "psycopg2", "websockets", "matplotlib", "numpy", "IPython", "pytest"],
+    noarchive=False,
 )
+pyz = PYZ(a.pure)
 
-exe = EXE(pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='UltimaScraper-{}.{}.{}'.format(major, minor, patch),
+version = None
+if sys.platform == "win32":
+    from PyInstaller.utils.win32.versioninfo import (
+        FixedFileInfo,
+        StringFileInfo,
+        StringStruct,
+        StringTable,
+        VarFileInfo,
+        VarStruct,
+        VSVersionInfo,
+    )
+
+    version = VSVersionInfo(
+        ffi=FixedFileInfo(
+            filevers=(MAJOR, MINOR, PATCH, 0),
+            prodvers=(MAJOR, MINOR, PATCH, 0),
+            mask=0x3F,
+            flags=0x0,
+            OS=0x40004,
+            fileType=0x1,
+            subtype=0x0,
+            date=(0, 0),
+        ),
+        kids=[
+            StringFileInfo(
+                [
+                    StringTable(
+                        "040904B0",
+                        [
+                            StringStruct("FileDescription", "Ultima Scraper"),
+                            StringStruct("FileVersion", f"{MAJOR}.{MINOR}.{PATCH}.0"),
+                            StringStruct("LegalCopyright", "GPLv3"),
+                            StringStruct("ProductName", "Ultima Scraper"),
+                            StringStruct("ProductVersion", f"{MAJOR}.{MINOR}.{PATCH}"),
+                        ],
+                    )
+                ]
+            ),
+            VarFileInfo([VarStruct("Translation", [1033, 1200])]),
+        ],
+    )
+
+exe_options = dict(
+    name=NAME,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,
-    icon='docs/assets/img/icon.ico',
-    version=version)
+    console=False,  # GUI application: no terminal window
+    icon=ICON,
+    version=version,
+)
+
+if ONEFILE:
+    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], runtime_tmpdir=None, **exe_options)
+else:
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, **exe_options)
+    coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name=NAME)
